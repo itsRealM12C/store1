@@ -1,0 +1,249 @@
+<!DOCTYPE html>
+<html id="home" lang="ko">
+<head>
+<title id="sub_title">Network is disconnected</title>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+<meta http-equiv="Content-Script-Type" content="text/javascript" />
+<meta http-equiv="Content-Style-Type" content="text/css" />
+<style>
+* { margin: 0; padding: 0; outline: none;}
+html, body, div, p, h1, button{margin:0;padding:0;font-weight:normal;}
+body{width:100%;height:100%;background-color:#050608;background-repeat:no-repeat;background-position:center top;background-size:100% auto; -webkit-user-select: none;}
+
+.wrapper{position:absolute;left:0;right:0;top:0;bottom:0;width:100%;height:100%;display:-webkit-box;-webkit-box-pack:center;-webkit-box-align:center;}
+.content{width:1240px;border-top:2px solid rgba(255,255,255,0.2);border-bottom:2px solid rgba(255,255,255,0.2);text-align:center;padding:50px 0;}
+.content h1{padding:0 0 20px;font-family:"Moon Miso Medium", "Miso", "LG Display-Light";font-size:125px;line-height:120px;color:#fff;text-transform:uppercase}
+.content p{font-family:"Moon Museo Sans Bold","Museo Sans 700", "LG Display-Regular";font-size:35px;color:#a6a6a6;}
+.content .wrap_btn{margin: 40px 0 0;text-align:center;}
+.content button{display:inline-block;width:390px;height:85px;border:4px solid transparent;border-radius:9999px;font-family:"Moon Miso Bold","Miso", "LG Display-Regular";font-size:36px;line-height:1em;color:#a6a6a6;letter-spacing:1px;background-color: #404040;text-align:center;text-transform:uppercase;cursor:pointer;outline:none;}
+.content button:hover,
+.content button:focus {color:#fff;background-color:#cf0652;}
+.content button:active {border-color:#cf0652;color: #a6a6a6;background-color:#4d4d4d;}
+
+/* lite */
+@media screen and (max-width:1280px) {
+        .content{width:827px;border-top-width:1px;border-bottom-width:1px;padding-top:33px; padding-bottom:33px;}
+        .content h1{padding-bottom:13px;font-size:83px;line-height:80px;}
+        .content p{font-size:23px;}
+        .content .wrap_btn{margin-top:27px;}
+        .content button{width:260px;height:57px;border-width:3px;font-size:24px;/* letter-spacing:1px; */}
+}
+
+</style>
+</head>
+<body id="body" style="background-image: url('../images/bg.png')">
+<div class="wrapper">
+	<div class="content">
+		<h1 id='main_title'></h1>
+		<p id='error_desc'></p>
+		<div class="wrap_btn">
+			<button type="button" aria-hidden="true" id="btnOk"></button>
+		</div>
+	</div>
+</div>
+<script>
+var Loader = new function() {
+	this.host = "";
+	this.q = {};
+	this.channel = {};
+
+	this.loadDeviceInfo = function(callback) {
+		var bridge = new PalmServiceBridge();
+
+		bridge.onservicecallback = function(response) {
+			callback(response);
+		};
+
+		bridge.call("luna://com.webos.service.sdx/getHttpHeaderForServiceRequest", JSON.stringify({}));
+	};
+
+	this.loadDeviceInfoCallback = function(response) {
+		response = JSON.parse(response);
+		Loader.host = "lgrecommends.lgappstv.com/discovery_2019/discovery.html";
+		Loader.q = response;
+
+        if(Loader.q.returnValue === true) {
+            if(Loader.q.header) Loader.q.header = "";
+            Loader.host = Loader.q.HOST.split(".")[0] + "." + Loader.host;
+            return true;
+        } else {
+            location.href = "./html/http_error.html";
+            return false;
+        }
+	}
+
+}
+
+window.onload = init;
+
+var btn = document.getElementsByTagName('button');
+var btnOk = document.getElementById('btnOk');
+
+function callAudioGuidance(button){
+        var title = document.getElementById('main_title').innerText;
+        var desc = document.getElementById('error_desc').innerText;
+        var btn = document.getElementById('btnOk').innerText;
+	var button_text = button;
+
+        btn = btn+" "+button_text;
+        console.log('title : ',title);
+        console.log('desc : ',desc);
+        console.log('btn : ',btn);
+
+        var bridge = new PalmServiceBridge();
+
+        bridge.onservicecallback = function(response){
+                console.log(response);
+        };
+        bridge.call("luna://com.webos.service.tts/speakVKB", JSON.stringify({"text":title,"clear":false}));
+        bridge.call("luna://com.webos.service.tts/speakVKB", JSON.stringify({"text":desc,"clear":false}));
+        bridge.call("luna://com.webos.service.tts/speakVKB", JSON.stringify({"text":btn,"clear":false}));
+
+}
+
+function init() {
+	var doc = document;	
+	setTimeout(function() {
+		btnOk.focus();
+		btnOk.className = 'focus';
+	}, 0);
+		
+	doc.addEventListener('keydown', function (e) {
+    console.log(e);
+    if(e.which == 461 && e.keyIdentifier == "webOS_Back"){
+    	var bridge = new PalmServiceBridge();
+    	bridge.onservicecallback = function(response) {
+    		console.log(response);
+    	};
+    	bridge.call("luna://com.webos.applicationManager/closeByAppId", JSON.stringify({"id":"com.webos.app.discovery"}));
+    }
+	});		
+	doc.addEventListener('mouseover', function (e) { eventType(e); });
+	doc.addEventListener('click', function (e) { eventType(e); });
+
+}
+	
+function eventType(e){
+	var currentNode = null;
+
+	switch ( e.type ){
+	case 'keydown':
+		if (e.target.nodeName != 'BUTTON'){
+			return;
+		}
+		if (e.keyCode != '37' && e.keyCode != '39'){
+			return;
+		}
+			
+		currentNode = btnOk;
+		addFocus(currentNode);
+		
+		break;
+	case 'mouseover':
+		if (e.target.nodeName != 'BUTTON'){
+			return;
+		}
+		currentNode = document.getElementById(e.target.id);
+		addFocus(currentNode);
+		
+		break;
+	case 'click':
+		if (e.target.nodeName != 'BUTTON'){
+			setTimeout(function() {
+				btnOk.focus();
+				btnOk.className = 'focus';
+			}, 0);
+		}
+		
+		currentNode = document.getElementById(e.target.id);
+		buttonClick(currentNode);
+	}
+}
+	
+function addFocus(current){
+	if ( current != null){
+		switch ( current.id ){
+		case 'btnOk':
+			btnOk.className = '';
+			setTimeout(function() {
+				btnOk.focus();
+				btnOk.className = 'focus';
+			}, 0);
+			
+			break;		
+		}
+	}
+}
+
+
+function buttonClick(current){
+	if ( current != null){
+		var bridge = new PalmServiceBridge();
+		switch ( current.id ){
+		case 'btnOk':
+			bridge.onservicecallback = function(response) {
+				console.log(response);
+			};
+			bridge.call("luna://com.webos.applicationManager/closeByAppId", JSON.stringify({"id":"com.webos.app.discovery"}));
+			break;		
+		}
+	}
+}
+</script>
+
+<script>
+var msg_errtitle	= "Service is temporarily unavailable.";
+var msg_errdesc1	= "Try again later.";
+var msg_title		= "LG CONTENT STORE";
+var msg_ok		= "OK";
+var btn			= "button";
+
+var loadDeviceInfo = function(callback) {
+	try {
+		var bridge = new PalmServiceBridge();
+
+		bridge.onservicecallback = function(response) {
+			callback(response);
+		};
+		bridge.call("luna://com.webos.service.sdx/getHttpHeaderForServiceRequest", JSON.stringify({}));
+	} catch (e) {
+		console.log('http_error loadDeviceInfo', e);
+		callback(JSON.stringify({}));
+	}
+};
+
+function getDeviceLanguage(response) {
+	try {
+		var deviceHeader = JSON.parse(response);
+
+		var lang = "en-US";
+		if(deviceHeader.returnValue === true) {
+			lang =  deviceHeader['X-Device-Language'];
+		}
+		lang = lang.replace(/-/g,'_');
+		lang = lang.toLowerCase();
+
+	} catch (e) {
+		console.log('http_error getDeviceLanguage', e);
+	} finally {
+		document.getElementById("main_title").innerHTML = msg_title;
+		document.getElementById("sub_title").innerHTML = msg_errtitle;
+		document.getElementById("btnOk").innerHTML =  msg_ok
+		document.getElementById("error_desc").innerHTML = msg_errtitle + '<br>'+  msg_errdesc1;
+
+		callAudioGuidance(btn);
+	}
+}
+
+loadDeviceInfo(getDeviceLanguage);
+
+</script>
+<form action="" name="sendform" method="get">
+<input type="hidden" name="q" value="{}">
+<input type="hidden" name="page" value="store">
+<input type="hidden" name="fast" value="false">
+</form>
+</body>
+</html>
+
+

@@ -1,0 +1,13 @@
+{
+	"files": [
+		"eu/appinfo.json",
+		"ja/appinfo.json",
+		"ko/appinfo.json",
+		"ps/appinfo.json",
+		"tr/appinfo.json",
+		"zh/Hant/HK/appinfo.json",
+		"zh/Hant/TW/appinfo.json",
+		"zh/appinfo.json",
+		"zu/appinfo.json"
+	]
+}

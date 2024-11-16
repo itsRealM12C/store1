@@ -1,0 +1,36 @@
+{
+	"id": "com.webos.app.discovery",
+	"version": "1.0.70",
+	"vendor": "LGE",
+	"type": "web",
+	"main": "index.html",
+	"title": "LG Content Store",
+	"sysAssetsBasePath":"asset",
+	"icon": "$lgstore.png",
+	"mediumIcon": "$lgstore_80x80.png",
+	"largeIcon": "$lgstore_130x130.png",
+	"bgImage": "$lgstore_preview.png",
+	"bgColor":"#470a21",
+	"splashBackground": "$lgstore_splash.png",
+	"iconColor": "#d7156d",
+	"uiRevision": 2,
+	"visible": true,
+	"disableBackHistoryAPI": true,
+	"requiredEULA": "generalTerms",
+	"voiceControl" : "manual",
+	"vendorExtension": {
+		"allowCrossDomain": true
+	},
+	"mimeTypes":[
+	{
+		"mime":"application/vnd.lge.appstore"
+	}
+	],
+	"accessibility": {
+            "supportsAudioGuidance" : true
+        },
+	"trustLevel": "trusted",
+	"handlesRelaunch": false,
+	"unmovable": false,
+	"supportQuickStart": true
+}

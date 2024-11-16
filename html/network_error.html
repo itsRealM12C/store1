@@ -1,0 +1,537 @@
+<!DOCTYPE html>
+<html id="home" lang="ko">
+<head>
+<title id="sub_title">Network is disconnected</title>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+<meta http-equiv="Content-Script-Type" content="text/javascript" />
+<meta http-equiv="Content-Style-Type" content="text/css" />
+<style>
+* { margin: 0; padding: 0; outline: none;}
+html, body, div, p, h1, button{margin:0;padding:0;font-weight:normal;}
+body{width:100%;height:100%;background-color:#050608;background-repeat:no-repeat;background-position:center top;background-size:100% auto; -webkit-user-select: none;}
+
+.wrapper{position:absolute;left:0;right:0;top:0;bottom:0;width:100%;height:100%;display:-webkit-box;-webkit-box-pack:center;-webkit-box-align:center;}
+.content{width:1240px;border-top:2px solid rgba(255,255,255,0.2);border-bottom:2px solid rgba(255,255,255,0.2);text-align:center;padding:50px 0;}
+.content h1{padding:0 0 20px;font-family:"Moon Miso Medium", "Miso", "LG Display-Light";font-size:125px;line-height:120px;color:#fff;text-transform:uppercase}
+.content p{font-family:"Moon Museo Sans Bold","Museo Sans 700", "LG Display-Regular";font-size:35px;color:#a6a6a6;}
+.content .wrap_btn{margin: 40px 0 0;text-align:center;}
+.content .btn{display:inline-block;width:390px;height:85px;border:4px solid transparent;border-radius:9999px;font-family:"Moon Miso Bold","Miso", "LG Display-Regular";font-size:36px;line-height:1em;color:#a6a6a6;letter-spacing:1px;background-color: #404040;text-align:center;text-transform:uppercase;cursor:pointer;outline:none;}
+/* button을 .btn 으로 변경, focus 규칙 추가 */
+.blank{pointer-events:auto;}
+.disabled.blank{pointer-events:none;}
+.btn.blank.disabled{border-color:transparent;background-color:#262626;}
+body.hover-mode .blank:hover,
+body:not(.hover-mode) .blank.focus{color:#fff;background-color:#cf0652;}
+body.hover-mode .btn.blank:active,
+body:not(.hover-mode) .pressed.btn.blank{border-color:#cf0652;color:#a6a6a6;background-color:#4d4d4d;}
+/* lite */
+@media screen and (max-width:1280px) {
+        .content{width:827px;border-top-width:1px;border-bottom-width:1px;padding-top:33px; padding-bottom:33px;}
+        .content h1{padding-bottom:13px;font-size:83px;line-height:80px;}
+        .content p{font-size:23px;}
+        .content .wrap_btn{margin-top:27px;}
+        .content .btn{width:260px;height:57px;border-width:3px;font-size:24px;/* letter-spacing:1px; */}
+}
+
+html[lang|="ja"] button, html[lang|="ja"] h1, html[lang|="ja"] h2, html[lang|="ja"] div, html[lang|="ja"] p, html[lang|="ja"] a {font-family:'LG Display_JP' !important;}
+html[lang|="hk"] button, html[lang|="hk"] h1, html[lang|="hk"] h2, html[lang|="hk"] div, html[lang|="hk"] p, html[lang|="hk"] a {font-family:'LG Display_HK' !important;}
+html[lang|="pl"] button, html[lang|="pl"] h1, html[lang|="pl"] h2, html[lang|="pl"] div, html[lang|="pl"] p, html[lang|="pl"] a {font-family:'LG Display-Light' !important;}
+
+/*---  rtl 방향 ---*/
+body.dir_rtl{direction:rtl}
+
+.err-close{position:absolute;right:0.8rem;top:1.334rem;margin:0;}
+.dir-rtl .err-close{right:auto;left:0.8rem;}
+.err-close .btn{width:5.4rem;height:5.4rem;padding:0;background-image:url('../images/btn_close.png');background-repeat:no-repeat;background-size:auto 5.4rem;background-position:50% 0;border-radius:50%;}
+.err-close .btn{border-color:transparent;}
+</style>
+<script src=../js/message.js></script>
+<script src=../js/sync.js></script>
+</head>
+<body id="body" style="background-image: url('../images/bg.png')">
+<div class="wrapper">
+	<div class="content">
+		<h1 id='main_title'></h1>
+		<p id='error_desc'></p>
+		<div class="wrap_btn">
+			<button class="btn blank" type="button" aria-hidden="true" id="btnOk"></button>
+		</div>
+		<div class="err-close">
+			<div id="exitTxt" style="display:none;"></div>
+                        <button class="btn blank" type="button" aria-hidden="true" id="closeBtn"></button>
+                </div>
+	</div>
+</div>
+<script>
+var Loader = new function() {
+	this.host = "";
+	this.q = {};
+	this.channel = {};
+
+	this.loadDeviceInfo = function(callback) {
+		var bridge = new PalmServiceBridge();
+
+		bridge.onservicecallback = function(response) {
+			callback(response);
+		};
+
+		bridge.call("luna://com.webos.service.sdx/getHttpHeaderForServiceRequest", JSON.stringify({}));
+	};
+
+	this.loadDeviceInfoCallback = function(response) {
+		response = JSON.parse(response);
+		Loader.host = "lgrecommends.lgappstv.com/discovery_2019/discovery.html";
+		Loader.q = response;
+
+		if(Loader.q.returnValue === true) {
+			if(Loader.q.header) Loader.q.header = "";
+			Loader.host = Loader.q.HOST.split(".")[0] + "." + Loader.host;
+		}
+
+		return true;
+	}
+	
+	this.loadChannelSetting = function(callback) {
+		var bridge = new PalmServiceBridge();
+
+		bridge.onservicecallback = function(response) {
+			callback(response);
+		};
+
+		bridge.call("luna://com.webos.service.iepg/getChannelList", '{"type":0,"sort":0,"channelGroup":["All"]}');
+	};
+
+	this.loadChannelSettingCallback = function(response) {
+		response = JSON.parse(response);
+
+		if(response.returnValue === true) {
+			response["channelList"] = [];
+		}
+
+		Loader.channel = response;
+
+		return true;
+	};
+
+	this.isNetworkConnected = function (callback) {
+		var retry = 0;
+		var interval = setInterval(
+		function () {
+			retry += 1;
+			if(retry > 5) {
+				clearInterval(interval);
+				console.log("Retry Count :" + retry + " [X]");
+				window.location = "./html/network_error.html";
+			}
+			var bridge = new PalmServiceBridge();
+			bridge.onservicecallback = function(response) {
+				console.log("try :" + retry + "[back]");
+				clearInterval(interval);
+				callback(response);
+			};
+			bridge.call("luna://com.palm.connectionmanager/getstatus", '{}');
+			console.log("try :" + retry + "[call]");
+		}
+		,500
+		);
+	};
+}
+
+window.onload = init;
+
+var btn = document.getElementsByTagName('button');
+var btnOk = document.getElementById('btnOk');
+var closeBtn = document.getElementById('closeBtn');
+var lastFocus, isBlur;
+
+function callAudioGuidance(button, btnId){
+    if (!btnId || btnId === 'btnOk') {
+        var title = document.getElementById('main_title').innerText;
+        var desc = document.getElementById('error_desc').innerText;
+        var btn = document.getElementById('btnOk').innerText;
+        var button_text = button;
+
+        btn = btn + " " + button_text;
+        console.log('title : ',title);
+        console.log('desc : ',desc);
+        console.log('btn : ',btn);
+
+        var bridge = new PalmServiceBridge();
+        bridge.onservicecallback = function(response){
+            console.log(response);
+        };
+	if (!btnId) {
+            bridge.call("luna://com.webos.service.tts/speakVKB", JSON.stringify({"text": title, "clear": false}));
+            bridge.call("luna://com.webos.service.tts/speakVKB", JSON.stringify({"text": desc, "clear": false}));
+            bridge.call("luna://com.webos.service.tts/speakVKB", JSON.stringify({"text": btn, "clear": false}));
+        } else {
+            bridge.call("luna://com.webos.service.tts/speakVKB", JSON.stringify({"text": btn, "clear": true}));
+        }
+    } else if (btnId === 'closeBtn') {
+        var btn = document.getElementById('exitTxt').innerText;
+        var button_text = button;
+
+        btn = btn + " " + button_text;
+        console.log('closeBtn : ',btn);
+
+        var bridge = new PalmServiceBridge();
+        bridge.onservicecallback = function(response){
+            console.log(response);
+        };
+        bridge.call("luna://com.webos.service.tts/speakVKB", JSON.stringify({"text": btn, "clear": true}));
+    }
+}
+
+function init() {
+	var doc = document;
+
+	doc.addEventListener('keydown', function (e) {
+		var okEle = document.getElementById('btnOk');
+		var closeEle = document.getElementById('closeBtn');
+    console.log(e);
+    if(e.which == 461){
+    	var bridge = new PalmServiceBridge();
+    	bridge.onservicecallback = function(response) {
+    		console.log(response);
+    	};
+    	bridge.call("luna://com.webos.applicationManager/closeByAppId", JSON.stringify({"id":"com.webos.app.discovery"}));
+    } else if (e.which == 38 || e.which == 39) {
+        currentFocus = closeBtn;
+        addFocus(currentFocus);
+    } else if (e.which == 37 || e.which == 40) {
+        currentFocus = btnOk;
+        addFocus(currentFocus);
+    }
+	});
+	doc.addEventListener('mouseover', function (e) { eventType(e); });
+	doc.addEventListener('click', function (e) { eventType(e); });
+	doc.addEventListener('webOSRelaunch' , function (e){
+                isRelaunchFlag = true;
+                var bridge = new PalmServiceBridge();
+                bridge.onservicecallback = function(response){
+                        response = JSON.parse(response);
+                        if(response.returnValue && response.isInternetConnectionAvailable){
+                        	Loader.isNetworkConnected(function(response) {
+                        		response = JSON.parse(response);
+                        		if(response.returnValue && response.isInternetConnectionAvailable) {
+                        			var sync = new Sync();
+
+                        			sync.setCallback(function() {
+                        				console.log("FINISHED");
+                        				console.log(Loader.host);
+                        				console.log(Loader.q);
+
+                        				//window.location = "http://" + Loader.host + "?q=" + encodeURIComponent(JSON.stringify(Loader.q));
+                        				//
+                        				delete Loader.q['X-Authentication'];
+                        				delete Loader.q['X-Device-ID'];
+                        				delete Loader.q['X-Login-Session'];
+                        				delete Loader.q['cookie'];
+
+                        				document.sendform.action = "https://"+Loader.host;
+                        				document.sendform.q.value = JSON.stringify(Loader.q);
+                        				if (PalmSystem && JSON.parse(PalmSystem.launchParams || '{"query": "featured"}').query == "featured") {
+                        					document.sendform.fast.value = "true";
+                        				}
+                        				document.sendform.submit();
+                        			});
+
+                        			sync.add(Loader.loadDeviceInfo, Loader.loadDeviceInfoCallback);
+                        			//sync.add(Loader.loadChannelSetting, Loader.loadChannelSettingCallback);
+
+                        			sync.run();
+                        		} else {
+                        			window.location = "./html/network_error.html";
+                        		}
+                        	});
+                        }else{
+                                PalmSystem.activate();
+                                isRelaunchFlag = false;
+                        }
+                };
+                bridge.call("luna://com.palm.connectionmanager/getstatus", '{}');
+        });
+
+  doc.addEventListener('cursorStateChange', function(e){
+    if (e.detail && e.detail.visibility) {
+      document.body.classList.add("hover-mode");
+    } else {
+      document.body.classList.remove("hover-mode");
+    }
+  });
+
+  window.addEventListener("blur", function() {
+    isBlur = true;
+    if (document.querySelector('.btn.focus')) {
+      lastFocus = document.querySelector('.btn.focus');
+      document.querySelector('.btn.focus').classList.remove('focus');
+    }
+
+  });
+
+  window.addEventListener("focus", function() {
+    isBlur = false;
+    if (lastFocus && typeof lastFocus === "object") {
+      lastFocus.classList.add('focus');
+      callAudioGuidance(btn, lastFocus.id);
+    }
+  });
+
+	 doc.addEventListener('webkitvisibilitychange',function(){
+//                if(!document.webkitHidden && isVisiFlag && !isRelaunchFlag){
+                        var bridge = new PalmServiceBridge();
+                        bridge.onservicecallback = function(response){
+                                response = JSON.parse(response);
+                                if(response.returnValue && response.isInternetConnectionAvailable){
+                                	Loader.isNetworkConnected(function(response) {
+                                		response = JSON.parse(response);
+                                		if(response.returnValue && response.isInternetConnectionAvailable) {
+                                			var sync = new Sync();
+
+                                			sync.setCallback(function() {
+                                				console.log("FINISHED");
+                                				console.log(Loader.host);
+                                				console.log(Loader.q);
+
+                                				//window.location = "http://" + Loader.host + "?q=" + encodeURIComponent(JSON.stringify(Loader.q));
+                                				//
+                                				delete Loader.q['X-Authentication'];
+                                				delete Loader.q['X-Device-ID'];
+                                				delete Loader.q['X-Login-Session'];
+                                				delete Loader.q['cookie'];
+
+                                				document.sendform.action = "https://"+Loader.host;
+                                				document.sendform.q.value = JSON.stringify(Loader.q);
+                                				if (PalmSystem && JSON.parse(PalmSystem.launchParams || '{"query": "featured"}').query == "featured") {
+                                					document.sendform.fast.value = "true";
+                                				}
+                                				document.sendform.submit();
+                                			});
+
+                                			sync.add(Loader.loadDeviceInfo, Loader.loadDeviceInfoCallback);
+                                			//sync.add(Loader.loadChannelSetting, Loader.loadChannelSettingCallback);
+
+                                			sync.run();
+                                		} else {
+                                			window.location = "./html/network_error.html";
+                                		}
+                                	});
+                                }
+                        };
+                        bridge.call("luna://com.palm.connectionmanager/getstatus", '{}');
+//                }
+                isRelaunchFlag = false;
+                isVisiFlag = true;
+
+        });
+interval = setInterval(
+                function(){
+                if(!document.webkitHidden){
+                        var bridge = new PalmServiceBridge();
+                        bridge.onservicecallback = function(response){
+                                response = JSON.parse(response);
+                                if(response.returnValue && response.isInternetConnectionAvailable){
+                                        Loader.isNetworkConnected(function(response) {
+                                                response = JSON.parse(response);
+                                                if(response.returnValue && response.isInternetConnectionAvailable) {
+                                                        var sync = new Sync();
+
+                                                        sync.setCallback(function() {
+                                                        console.log("FINISHED");
+                                                        console.log(Loader.host);
+                                                        console.log(Loader.q);
+
+                                                        //window.location = "http://" + Loader.host + "?q=" + encodeURIComponent(JSON.stringify(Loader.q));
+
+                                                        delete Loader.q['X-Authentication'];
+                                                        delete Loader.q['X-Device-ID'];
+                                                        delete Loader.q['X-Login-Session'];
+                                                        delete Loader.q['cookie'];
+
+                                                        document.sendform.action = "https://"+Loader.host;
+                                                        document.sendform.q.value = JSON.stringify(Loader.q);
+                                                        if (PalmSystem && JSON.parse(PalmSystem.launchParams || '{"query": "featured"}').query == "featured") {
+                                                                document.sendform.fast.value = "true";
+                                                        }
+                                                        document.sendform.submit();
+                                                        });
+
+                                                         sync.add(Loader.loadDeviceInfo, Loader.loadDeviceInfoCallback);
+                                                        //sync.add(Loader.loadChannelSetting, Loader.loadChannelSettingCallback);
+
+                                                        sync.run();
+                                                } else {
+                                                        window.location = "./html/network_error.html";
+                                                }
+                                        });
+                                }else{
+                                }
+                        };
+                        bridge.call("luna://com.palm.connectionmanager/getstatus", '{}');
+                }
+        },500);
+  loadDeviceInfo(getDeviceLanguage);
+
+  if (window.PalmSystem && window.PalmSystem.cursor && window.PalmSystem.cursor.visibility) {
+    document.body.classList.add('hover-mode');
+  } else {
+    document.body.classList.remove('hover-mode');
+  }
+  document.getElementById('body').style.display = 'inline';
+  btnOk.focus();
+}
+
+function eventType(e){
+	var currentNode = null;
+
+	switch ( e.type ){
+	case 'keydown':
+		if (e.target.nodeName != 'BUTTON'){
+			return;
+		}
+		if (e.keyCode != '37' && e.keyCode != '39'){
+			return;
+		}
+
+		currentNode = btnOk;
+		addFocus(currentNode);
+
+		break;
+	case 'mouseover':
+		if (e.target.nodeName != 'BUTTON'){
+			return;
+		}
+		currentNode = document.getElementById(e.target.id);
+		addFocus(currentNode);
+
+		break;
+	case 'click':
+		currentNode = document.getElementById(e.target.id);
+		buttonClick(currentNode);
+	}
+}
+
+function addFocus(current){
+  if (current) {
+    if (current === btnOk) {
+      closeBtn.classList.remove('focus');
+      btnOk.classList.add('focus');
+      btnOk.focus();
+      callAudioGuidance(btn, 'btnOk');
+    } else {
+      btnOk.classList.remove('focus');
+      closeBtn.classList.add('focus');
+      closeBtn.focus();
+      callAudioGuidance(btn, 'closeBtn');
+    }
+  }
+}
+
+
+function buttonClick(current){
+	if ( current != null){
+		var bridge = new PalmServiceBridge();
+		switch ( current.id ){
+		case 'btnOk':
+			bridge.onservicecallback = function(response) {
+				console.log(response);
+//        PalmSystem.close('EXIT_TO_LASTAPP');
+			};
+      bridge.call("luna://com.webos.applicationManager/launch", JSON.stringify({"id":"com.palm.app.settings", "params":{"target":"network"}}));
+			break;
+		case 'closeBtn':
+			PalmSystem.close('EXIT_TO_LASTAPP');
+			break;
+		}
+	}
+}
+</script>
+
+<script>
+var msg_errtitle = "Network is disconnected.";
+var msg_errdesc1 = "Check the network connection.";
+var msg_title = "LG Content Store";
+var msg_ok = "NETWORK SETTINGS";
+var btn = "button";
+var exit_btn = "Exit app";
+
+var loadDeviceInfo = function(callback) {
+	try {
+		var bridge = new PalmServiceBridge();
+
+		bridge.onservicecallback = function(response) {
+			callback(response);
+		};
+		bridge.call("luna://com.webos.service.sdx/getHttpHeaderForServiceRequest", JSON.stringify({}));
+	} catch (e) {
+		console.log('network_error loadDeviceInfo', e);
+		callback(JSON.stringify({}));
+	}
+};
+
+function getDeviceLanguage(response) {
+	try {
+		var deviceHeader = JSON.parse(response);
+
+		var lang = "en-US";
+		if(deviceHeader.returnValue === true) {
+			lang =  deviceHeader['X-Device-Language'];
+		}
+		lang = lang.replace(/-/g,'_');
+		lang = lang.toLowerCase();
+  		if (msg[lang]) {
+    			msg_errtitle = msg[lang]['nw_err_head'];  //Network is disconnected.
+			msg_errdesc1 = msg[lang]['nw_err_msg1'];  //Check the network connection.
+			msg_title = msg[lang]['title'];           //LG Content Store
+			msg_ok = msg[lang]['network_btn'];        //NETWORK SETTINGS
+			btn = msg[lang]['btn'];                   //button
+			exit_btn = msg[lang]['exit_btn'];         //exit button
+		}
+
+		if( lang.indexOf("ja_") == 0 || lang == "en_jp"){
+			document.getElementById('home').setAttribute('lang', 'ja');
+		}
+		if( lang.indexOf("_hk") != -1 ){
+			document.getElementById('home').setAttribute('lang', 'hk');
+		}
+		if( lang.indexOf("pl_") == 0 ){
+			document.getElementById('home').setAttribute('lang', 'pl');
+		}
+
+		if( lang.indexOf("ur_") == 0 || lang.indexOf("he_") == 0 || lang.indexOf("ku_") == 0 || lang.indexOf("fa_") == 0  || lang.indexOf("ar_") == 0){
+			document.getElementById('body').className = "dir_rtl";
+		} else {
+			document.getElementById('body').className = "";
+		}
+	} catch (e) {
+		console.log('network_error getDeviceLanguage', e);
+	} finally {
+		document.getElementById("main_title").innerHTML = msg_title;
+		document.getElementById("sub_title").innerHTML = msg_errtitle;
+		document.getElementById("btnOk").innerHTML =  msg_ok;
+		document.getElementById("error_desc").innerHTML = msg_errtitle + '<br>'+  msg_errdesc1;
+		document.getElementById("exitTxt").innerHTML =  exit_btn;
+
+
+    document.getElementById("btnOk").classList.add('focus');
+    if (window.PalmSystem && window.PalmSystem.cursor && window.PalmSystem.cursor.visibility) {
+      document.body.classList.add('hover-mode');
+    } else {
+      document.body.classList.remove('hover-mode');
+    }
+    document.getElementById('body').style.display = 'inline';
+    btnOk.focus();
+		callAudioGuidance(btn);
+	}
+}
+
+  window.onload = init;
+</script>
+
+<form action="" name="sendform" method="get">
+<input type="hidden" name="q" value="{}">
+<input type="hidden" name="page" value="store">
+<input type="hidden" name="fast" value="false">
+</form>
+</body>
+</html>
